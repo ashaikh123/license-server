@@ -1,188 +1,351 @@
-"""API routes
-==============
-
-Exposes endpoints for client applications to activate and validate
-licences. These endpoints are designed to be called by desktop
-applications packaged as executables. They return JSON responses
-indicating whether the licence is valid and any relevant messages.
-"""
-
 from datetime import datetime, date
 
 from flask import Blueprint, request, jsonify, current_app
 
 from extensions import db
 from models.license import License
-from models.user import User
 from models.device import Device
 from models.usage_log import UsageLog
-from models.organization import Organization
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
-def _log_usage(action: str, licence: License | None, user: User | None, org: Organization | None, system_id: str | None, ip: str | None, app_version: str | None, result: str, reason: str | None) -> None:
-    """Helper to record API usage attempts."""
+def check_api_key():
+    expected_key = current_app.config.get("API_SECRET_KEY")
+    received_key = request.headers.get("X-API-KEY")
+
+    if not expected_key:
+        return True
+
+    return received_key == expected_key
+
+
+def get_client_ip():
+    return request.headers.get("X-Forwarded-For", request.remote_addr)
+
+
+def log_usage(
+    action,
+    result,
+    reason=None,
+    license_obj=None,
+    system_id=None,
+    app_version=None,
+):
     log = UsageLog(
-        license_id=licence.id if licence else None,
-        user_id=user.id if user else None,
-        organization_id=org.id if org else None,
+        license_id=license_obj.id if license_obj else None,
+        user_id=license_obj.user_id if license_obj else None,
+        organization_id=license_obj.user.organization_id if license_obj and license_obj.user else None,
         system_id=system_id,
-        ip_address=ip,
+        ip_address=get_client_ip(),
         app_version=app_version,
         action=action,
         result=result,
         reason=reason,
-        timestamp=datetime.utcnow(),
     )
     db.session.add(log)
+
+
+def error_response(message, status_code=400, license_obj=None, system_id=None, app_version=None, action="validate"):
+    log_usage(
+        action=action,
+        result="fail",
+        reason=message,
+        license_obj=license_obj,
+        system_id=system_id,
+        app_version=app_version,
+    )
     db.session.commit()
+
+    return jsonify({
+        "success": False,
+        "valid": False,
+        "message": message
+    }), status_code
+
+
+def validate_license_base(license_obj):
+    if not license_obj:
+        return "License key not found"
+
+    if license_obj.status != "active":
+        return f"License is {license_obj.status}"
+
+    if license_obj.expiry_date and date.today() > license_obj.expiry_date:
+        license_obj.status = "expired"
+        return "License has expired"
+
+    user = license_obj.user
+    if not user or not user.is_active:
+        return "User is inactive"
+
+    organization = user.organization
+    if not organization or not organization.is_active:
+        return "Organization is inactive"
+
+    return None
 
 
 @api_bp.route("/activate", methods=["POST"])
-def activate():
-    """Activate a licence on a new or existing device."""
-    data = request.get_json() or request.form
+def activate_license():
+    if not check_api_key():
+        return jsonify({
+            "success": False,
+            "message": "Unauthorized API request"
+        }), 401
+
+    data = request.get_json(silent=True) or {}
+
     license_key = data.get("license_key")
     system_id = data.get("system_id")
     machine_name = data.get("machine_name")
     app_version = data.get("app_version")
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-
-    # Optionally enforce API secret key
-    api_secret_required = current_app.config.get("API_SECRET_KEY")
-    api_secret_received = request.headers.get("X-API-SECRET") or data.get("api_secret_key")
-    if api_secret_required and api_secret_received != api_secret_required:
-        return jsonify({"valid": False, "reason": "Invalid API secret"}), 401
 
     if not license_key or not system_id:
-        return jsonify({"valid": False, "reason": "Missing required parameters"}), 400
+        return jsonify({
+            "success": False,
+            "message": "license_key and system_id are required"
+        }), 400
 
-    licence = License.query.filter_by(key=license_key).first()
-    if not licence:
-        _log_usage(
-            action="activate",
-            licence=None,
-            user=None,
-            org=None,
+    license_obj = License.query.filter_by(key=license_key).first()
+
+    base_error = validate_license_base(license_obj)
+    if base_error:
+        return error_response(
+            message=base_error,
+            status_code=403,
+            license_obj=license_obj,
             system_id=system_id,
-            ip=client_ip,
             app_version=app_version,
-            result="fail",
-            reason="License not found",
+            action="activate",
         )
-        return jsonify({"valid": False, "reason": "License not found"}), 404
 
-    # Validate licence status
-    if licence.status in ("revoked", "suspended"):
-        _log_usage("activate", licence, licence.user, licence.user.organization, system_id, client_ip, app_version, "fail", f"License {licence.status}")
-        return jsonify({"valid": False, "reason": f"License {licence.status}"}), 403
-    # Check expiry
-    if licence.expiry_date and date.today() > licence.expiry_date:
-        # Mark as expired if not already
-        licence.status = "expired"
+    existing_device = Device.query.filter_by(
+        license_id=license_obj.id,
+        system_id=system_id,
+    ).first()
+
+    if existing_device:
+        if not existing_device.is_active:
+            return error_response(
+                message="Device is deactivated",
+                status_code=403,
+                license_obj=license_obj,
+                system_id=system_id,
+                app_version=app_version,
+                action="activate",
+            )
+
+        existing_device.last_check = datetime.utcnow()
+        existing_device.ip_address = get_client_ip()
+        existing_device.app_version = app_version
+
+        log_usage(
+            action="activate",
+            result="success",
+            reason="Existing device revalidated",
+            license_obj=license_obj,
+            system_id=system_id,
+            app_version=app_version,
+        )
         db.session.commit()
-        _log_usage("activate", licence, licence.user, licence.user.organization, system_id, client_ip, app_version, "fail", "License expired")
-        return jsonify({"valid": False, "reason": "License expired"}), 403
 
-    user = licence.user
-    org = user.organization
+        return jsonify({
+            "success": True,
+            "message": "Device already activated",
+            "license_status": license_obj.status,
+            "expiry_date": license_obj.expiry_date.isoformat() if license_obj.expiry_date else None,
+            "devices_used": Device.query.filter_by(license_id=license_obj.id, is_active=True).count(),
+            "max_devices": license_obj.max_devices,
+        })
 
-    if not org.is_active:
-        _log_usage("activate", licence, user, org, system_id, client_ip, app_version, "fail", "Organization inactive")
-        return jsonify({"valid": False, "reason": "Organization inactive"}), 403
+    active_device_count = Device.query.filter_by(
+        license_id=license_obj.id,
+        is_active=True,
+    ).count()
 
-    if not user.is_active:
-        _log_usage("activate", licence, user, org, system_id, client_ip, app_version, "fail", "User inactive")
-        return jsonify({"valid": False, "reason": "User inactive"}), 403
+    if active_device_count >= license_obj.max_devices:
+        return error_response(
+            message="Maximum device limit reached",
+            status_code=403,
+            license_obj=license_obj,
+            system_id=system_id,
+            app_version=app_version,
+            action="activate",
+        )
 
-    # Check existing device
-    device = Device.query.filter_by(license_id=licence.id, system_id=system_id).first()
-    if device:
-        # update last_check and ip
-        device.last_check = datetime.utcnow()
-        device.ip_address = client_ip
-        device.app_version = app_version
-        db.session.commit()
-        _log_usage("activate", licence, user, org, system_id, client_ip, app_version, "success", None)
-        return jsonify({"valid": True, "message": "License valid", "expires_on": licence.expiry_date.isoformat() if licence.expiry_date else None})
-
-    # Check device limit
-    active_devices = Device.query.filter_by(license_id=licence.id, is_active=True).count()
-    if active_devices >= licence.max_devices:
-        _log_usage("activate", licence, user, org, system_id, client_ip, app_version, "fail", "Device limit reached")
-        return jsonify({"valid": False, "reason": "Device limit reached"}), 403
-
-    # Register new device
     new_device = Device(
-        license_id=licence.id,
-        user_id=user.id,
-        organization_id=org.id,
+        license_id=license_obj.id,
+        user_id=license_obj.user_id,
+        organization_id=license_obj.user.organization_id,
         system_id=system_id,
         machine_name=machine_name,
         activation_timestamp=datetime.utcnow(),
         last_check=datetime.utcnow(),
-        ip_address=client_ip,
+        ip_address=get_client_ip(),
         app_version=app_version,
         is_active=True,
     )
+
     db.session.add(new_device)
+
+    log_usage(
+        action="activate",
+        result="success",
+        reason="New device activated",
+        license_obj=license_obj,
+        system_id=system_id,
+        app_version=app_version,
+    )
+
     db.session.commit()
-    _log_usage("activate", licence, user, org, system_id, client_ip, app_version, "success", None)
-    return jsonify({"valid": True, "message": "License valid", "expires_on": licence.expiry_date.isoformat() if licence.expiry_date else None}), 200
+
+    return jsonify({
+        "success": True,
+        "message": "Activation successful",
+        "license_status": license_obj.status,
+        "expiry_date": license_obj.expiry_date.isoformat() if license_obj.expiry_date else None,
+        "devices_used": active_device_count + 1,
+        "max_devices": license_obj.max_devices,
+    })
 
 
 @api_bp.route("/validate", methods=["POST"])
-def validate():
-    """Validate an existing device and licence."""
-    data = request.get_json() or request.form
+def validate_license():
+    if not check_api_key():
+        return jsonify({
+            "success": False,
+            "valid": False,
+            "message": "Unauthorized API request"
+        }), 401
+
+    data = request.get_json(silent=True) or {}
+
     license_key = data.get("license_key")
     system_id = data.get("system_id")
     app_version = data.get("app_version")
-    client_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-
-    api_secret_required = current_app.config.get("API_SECRET_KEY")
-    api_secret_received = request.headers.get("X-API-SECRET") or data.get("api_secret_key")
-    if api_secret_required and api_secret_received != api_secret_required:
-        return jsonify({"valid": False, "reason": "Invalid API secret"}), 401
 
     if not license_key or not system_id:
-        return jsonify({"valid": False, "reason": "Missing required parameters"}), 400
+        return jsonify({
+            "success": False,
+            "valid": False,
+            "message": "license_key and system_id are required"
+        }), 400
 
-    licence = License.query.filter_by(key=license_key).first()
-    if not licence:
-        _log_usage("validate", None, None, None, system_id, client_ip, app_version, "fail", "License not found")
-        return jsonify({"valid": False, "reason": "License not found"}), 404
+    license_obj = License.query.filter_by(key=license_key).first()
 
-    # Check status
-    if licence.status in ("revoked", "suspended"):
-        _log_usage("validate", licence, licence.user, licence.user.organization, system_id, client_ip, app_version, "fail", f"License {licence.status}")
-        return jsonify({"valid": False, "reason": f"License {licence.status}"}), 403
-    if licence.expiry_date and date.today() > licence.expiry_date:
-        licence.status = "expired"
-        db.session.commit()
-        _log_usage("validate", licence, licence.user, licence.user.organization, system_id, client_ip, app_version, "fail", "License expired")
-        return jsonify({"valid": False, "reason": "License expired"}), 403
+    base_error = validate_license_base(license_obj)
+    if base_error:
+        return error_response(
+            message=base_error,
+            status_code=403,
+            license_obj=license_obj,
+            system_id=system_id,
+            app_version=app_version,
+            action="validate",
+        )
 
-    user = licence.user
-    org = user.organization
-    if not org.is_active:
-        _log_usage("validate", licence, user, org, system_id, client_ip, app_version, "fail", "Organization inactive")
-        return jsonify({"valid": False, "reason": "Organization inactive"}), 403
-    if not user.is_active:
-        _log_usage("validate", licence, user, org, system_id, client_ip, app_version, "fail", "User inactive")
-        return jsonify({"valid": False, "reason": "User inactive"}), 403
+    device = Device.query.filter_by(
+        license_id=license_obj.id,
+        system_id=system_id,
+        is_active=True,
+    ).first()
 
-    # Check device exists
-    device = Device.query.filter_by(license_id=licence.id, system_id=system_id).first()
-    if not device or not device.is_active:
-        _log_usage("validate", licence, user, org, system_id, client_ip, app_version, "fail", "Device not registered")
-        return jsonify({"valid": False, "reason": "Device not registered"}), 403
+    if not device:
+        return error_response(
+            message="This device is not activated for this license",
+            status_code=403,
+            license_obj=license_obj,
+            system_id=system_id,
+            app_version=app_version,
+            action="validate",
+        )
 
-    # Update last_check and metadata
     device.last_check = datetime.utcnow()
-    device.ip_address = client_ip
+    device.ip_address = get_client_ip()
     device.app_version = app_version
+
+    log_usage(
+        action="validate",
+        result="success",
+        reason="License validated",
+        license_obj=license_obj,
+        system_id=system_id,
+        app_version=app_version,
+    )
+
     db.session.commit()
-    _log_usage("validate", licence, user, org, system_id, client_ip, app_version, "success", None)
-    return jsonify({"valid": True, "message": "License valid", "expires_on": licence.expiry_date.isoformat() if licence.expiry_date else None}), 200
+
+    return jsonify({
+        "success": True,
+        "valid": True,
+        "message": "License valid",
+        "license_status": license_obj.status,
+        "expiry_date": license_obj.expiry_date.isoformat() if license_obj.expiry_date else None,
+    })
+
+
+@api_bp.route("/deactivate", methods=["POST"])
+def deactivate_device():
+    if not check_api_key():
+        return jsonify({
+            "success": False,
+            "message": "Unauthorized API request"
+        }), 401
+
+    data = request.get_json(silent=True) or {}
+
+    license_key = data.get("license_key")
+    system_id = data.get("system_id")
+    app_version = data.get("app_version")
+
+    if not license_key or not system_id:
+        return jsonify({
+            "success": False,
+            "message": "license_key and system_id are required"
+        }), 400
+
+    license_obj = License.query.filter_by(key=license_key).first()
+
+    if not license_obj:
+        return error_response(
+            message="License key not found",
+            status_code=404,
+            system_id=system_id,
+            app_version=app_version,
+            action="deactivate",
+        )
+
+    device = Device.query.filter_by(
+        license_id=license_obj.id,
+        system_id=system_id,
+    ).first()
+
+    if not device:
+        return error_response(
+            message="Device not found",
+            status_code=404,
+            license_obj=license_obj,
+            system_id=system_id,
+            app_version=app_version,
+            action="deactivate",
+        )
+
+    device.is_active = False
+    device.last_check = datetime.utcnow()
+
+    log_usage(
+        action="deactivate",
+        result="success",
+        reason="Device deactivated",
+        license_obj=license_obj,
+        system_id=system_id,
+        app_version=app_version,
+    )
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Device deactivated successfully"
+    })
