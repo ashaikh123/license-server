@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Logs - License Server{% endblock %}
+
+{% block content %}
+<h2>Usage Logs</h2>
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>Timestamp</th>
+      <th>Action</th>
+      <th>License</th>
+      <th>User</th>
+      <th>Organisation</th>
+      <th>System ID</th>
+      <th>IP</th>
+      <th>Version</th>
+      <th>Result</th>
+      <th>Reason</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td>{{ log.action }}</td>
+      <td>{{ log.license.key if log.license else '-' }}</td>
+      <td>{{ log.user.email if log.user else '-' }}</td>
+      <td>{{ log.organization.name if log.organization else '-' }}</td>
+      <td>{{ log.system_id or '-' }}</td>
+      <td>{{ log.ip_address or '-' }}</td>
+      <td>{{ log.app_version or '-' }}</td>
+      <td>{{ log.result }}</td>
+      <td>{{ log.reason or '-' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

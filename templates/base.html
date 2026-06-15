@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{% block title %}License Server{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<nav class="topbar">
+    <div class="brand">License Server</div>
+
+    <div class="nav-links">
+        {% if session.get('admin_id') %}
+            <a href="{{ url_for('admin.dashboard') }}">Home</a>
+            <a href="{{ url_for('admin.organizations') }}">Organizations</a>
+            <a href="{{ url_for('admin.users') }}">Users</a>
+            <a href="{{ url_for('admin.licenses') }}">Licenses</a>
+            <a href="{{ url_for('admin.devices') }}">Devices</a>
+            <a href="{{ url_for('admin.logs') }}">Logs</a>
+            <span class="user-email">Admin</span>
+            <a href="{{ url_for('admin.logout') }}">Logout</a>
+        {% elif session.get('org_admin_id') %}
+            <a href="{{ url_for('org.dashboard') }}">Home</a>
+            <a href="{{ url_for('org.users') }}">Users</a>
+            <a href="{{ url_for('org.licenses') }}">Licenses</a>
+            <a href="{{ url_for('org.devices') }}">Devices</a>
+            <a href="{{ url_for('org.logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('admin.login') }}">Login</a>
+        {% endif %}
+    </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<main class="page-wrap">
+    <section class="content-card">
+        {% block content %}{% endblock %}
+    </section>
+</main>
+
+</body>
+</html>

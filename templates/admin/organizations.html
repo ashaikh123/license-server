@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block title %}Organizations - License Server{% endblock %}
+
+{% block content %}
+
+<div class="page-actions">
+    <h2>Organizations</h2>
+
+</div>
+
+<div class="inline-table-form">
+    <form method="post">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Organization Name</th>
+                    <th>Contact Person</th>
+                    <th>Contact Email</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>
+                        <input type="text" name="name" class="form-control" placeholder="Organization Name" required>
+                    </td>
+
+                    <td>
+                        <input type="text" name="contact_person" class="form-control" placeholder="Contact Person">
+                    </td>
+
+                    <td>
+                        <input type="email" name="contact_email" class="form-control" placeholder="Contact Email">
+                    </td>
+
+                    <td>
+                        <select name="is_active" class="form-select">
+                            <option value="on" selected>Active</option>
+                            <option value="">Inactive</option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary">➕ Add</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Organization</th>
+            <th>Contact Person</th>
+            <th>Contact Email</th>
+            <th>Status</th>
+            <th>Dashboard Link</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for org in orgs %}
+        {% set dashboard_url = url_for('org.view_org_dashboard', token=org.dashboard_token, _external=True) %}
+
+        <tr>
+            <td>{{ org.id }}</td>
+            <td>{{ org.name }}</td>
+            <td>{{ org.contact_person or '-' }}</td>
+            <td>{{ org.contact_email or '-' }}</td>
+
+            <td>
+                {% if org.is_active %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+            </td>
+
+            <td>
+                {% if org.dashboard_token and org.dashboard_enabled %}
+                    <button class="btn btn-sm btn-outline-primary"
+                            onclick="copyToClipboard('{{ dashboard_url }}')">
+                        Copy Link
+                    </button>
+
+                    <a href="{{ dashboard_url }}"
+                       target="_blank"
+                       class="btn btn-sm btn-outline-success">
+                        Open
+                    </a>
+                {% else %}
+                    <span class="text-muted">Disabled</span>
+                {% endif %}
+            </td>
+
+            <td>{{ org.created_at.strftime('%Y-%m-%d') }}</td>
+
+            <td>
+                <a href="{{ url_for('admin.edit_organization', org_id=org.id) }}"
+                   class="btn btn-sm btn-outline-secondary">
+                    Edit
+                </a>
+
+                <form method="post"
+                      action="{{ url_for('admin.regenerate_org_token', org_id=org.id) }}"
+                      style="display:inline;">
+                    <button class="btn btn-sm btn-outline-warning"
+                            onclick="return confirm('Regenerate dashboard link? Old link will stop working.')">
+                        Regenerate
+                    </button>
+                </form>
+
+                {% if org.is_active %}
+                <form method="post"
+                      action="{{ url_for('admin.deactivate_organization', org_id=org.id) }}"
+                      style="display:inline;">
+                    <button class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Deactivate this organization?')">
+                        Deactivate
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        alert("Dashboard link copied");
+    });
+}
+</script>
+
+{% endblock %}

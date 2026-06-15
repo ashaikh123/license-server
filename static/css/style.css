@@ -1,0 +1,187 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f4f4;
+    color: #000;
+}
+
+.topbar {
+    height: 54px;
+    background: #303030;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+}
+
+.brand {
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+}
+
+.nav-links a {
+    color: #fff;
+    font-size: 18px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.nav-links a:hover {
+    text-decoration: underline;
+}
+
+.user-email {
+    color: #fff;
+    font-size: 15px;
+}
+
+.page-wrap {
+    max-width: 1320px;
+    margin: 26px auto;
+    padding: 0 20px;
+}
+
+.content-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 26px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.14);
+    min-height: 420px;
+}
+
+h2 {
+    font-size: 30px;
+    margin-bottom: 24px;
+    font-weight: bold;
+}
+
+.table {
+    margin-top: 18px;
+    background: #fff;
+}
+
+.table thead th {
+    background: #eeeeee;
+    font-size: 16px;
+    border: 1px solid #d8d8d8;
+}
+
+.table td {
+    border: 1px solid #d8d8d8;
+    vertical-align: middle;
+}
+
+.btn {
+    border-radius: 5px;
+}
+
+.page-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.stat-card {
+    border: 1px solid #ddd;
+    background: #fafafa;
+    padding: 22px;
+    border-radius: 6px;
+}
+
+.stat-card h4 {
+    font-size: 17px;
+    margin-bottom: 14px;
+}
+
+.stat-card .number {
+    font-size: 34px;
+    font-weight: bold;
+}
+
+.flash {
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+.flash-success {
+    background: #d9ffe2;
+    color: green;
+}
+
+.flash-danger {
+    background: #ffe0e0;
+    color: #a00000;
+}
+
+.flash-info {
+    background: #e7f1ff;
+    color: #004085;
+}
+
+.login-card {
+    max-width: 920px;
+    margin: 0 auto;
+}
+
+.form-control,
+.form-select {
+    max-width: 360px;
+}
+
+.login-card .form-control {
+    max-width: 260px;
+}
+
+
+.action-link {
+    border: none;
+    background: none;
+    padding: 0;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.action-link.danger {
+    color: #c00000;
+}
+
+.action-link.success {
+    color: #008000;
+}
+
+.inline-table-form {
+    margin-bottom: 20px;
+}
+
+.inline-table-form table {
+    margin-bottom: 10px;
+}
+
+.inline-table-form input,
+.inline-table-form select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.inline-table-form th {
+    background: #eeeeee;
+}

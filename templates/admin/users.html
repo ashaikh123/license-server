@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Users - License Server{% endblock %}
+
+{% block content %}
+
+<div class="page-actions">
+    <h2>Users</h2>
+</div>
+
+<div class="inline-table-form">
+    <form method="post">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Organization</th>
+                    <th>User Name</th>
+                    <th>User Email</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>
+                        <select name="organization_id" class="form-select" required>
+                            <option value="" disabled selected>Select Organization</option>
+                            {% for org in orgs %}
+                            <option value="{{ org.id }}">{{ org.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+
+                    <td>
+                        <input type="text" name="name" class="form-control" placeholder="User Name" required>
+                    </td>
+
+                    <td>
+                        <input type="email" name="email" class="form-control" placeholder="User Email" required>
+                    </td>
+
+                    <td>
+                        <select name="is_active" class="form-select">
+                            <option value="on" selected>Active</option>
+                            <option value="">Inactive</option>
+                        </select>
+                    </td>
+
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary">➕ Add</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Organization</th>
+            <th>User Name</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>License Count</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.organization.name }}</td>
+            <td>{{ user.name }}</td>
+            <td>{{ user.email }}</td>
+
+            <td>
+                {% if user.is_active %}
+                    <span class="badge bg-success">Active</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactive</span>
+                {% endif %}
+            </td>
+
+            <td>{{ user.licenses|length }}</td>
+            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+
+            <td>
+                {% if user.is_active %}
+                <form method="post"
+                      action="{{ url_for('admin.deactivate_user', user_id=user.id) }}"
+                      style="display:inline;">
+                    <button class="action-link danger"
+                            onclick="return confirm('Deactivate this user? Active licenses will also be revoked.')">
+                        Deactivate
+                    </button>
+                </form>
+                {% else %}
+                <form method="post"
+                      action="{{ url_for('admin.activate_user', user_id=user.id) }}"
+                      style="display:inline;">
+                    <button class="action-link success"
+                            onclick="return confirm('Activate this user?')">
+                        Activate
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Licenses - License Server{% endblock %}
+
+{% block content %}
+
+<div class="page-actions">
+    <h2>Licenses</h2>
+</div>
+
+<div class="inline-table-form">
+    <form method="post">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Start Date</th>
+                    <th>Expiry Date</th>
+                    <th>Max Devices</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td>
+                        <select name="user_id" class="form-select" required>
+                            <option value="" disabled selected>Select User</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">
+                                {{ user.name }} - {{ user.email }} ({{ user.organization.name }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+
+                    <td>
+                        <input type="date" name="start_date" class="form-control">
+                    </td>
+
+                    <td>
+                        <input type="date" name="expiry_date" class="form-control">
+                    </td>
+
+                    <td>
+                        <input type="number" name="max_devices" class="form-control" value="1" min="1">
+                    </td>
+
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary">➕ Add</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Organization</th>
+            <th>User</th>
+            <th>License Key</th>
+            <th>Status</th>
+            <th>Start Date</th>
+            <th>Expiry Date</th>
+            <th>Max Devices</th>
+            <th>Linked Devices</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for lic in licenses %}
+        <tr>
+            <td>{{ lic.id }}</td>
+            <td>{{ lic.user.organization.name }}</td>
+            <td>{{ lic.user.email }}</td>
+            <td><strong>{{ lic.key }}</strong></td>
+
+            <td>
+                {% if lic.status == 'active' %}
+                    <span class="badge bg-success">Active</span>
+                {% elif lic.status == 'revoked' %}
+                    <span class="badge bg-danger">Revoked</span>
+                {% elif lic.status == 'expired' %}
+                    <span class="badge bg-warning text-dark">Expired</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ lic.status }}</span>
+                {% endif %}
+            </td>
+
+            <td>{{ lic.start_date or '-' }}</td>
+            <td>{{ lic.expiry_date or '-' }}</td>
+            <td>{{ lic.max_devices }}</td>
+            <td>{{ lic.devices|length }}</td>
+
+            <td>
+                {% if lic.status == 'active' %}
+                <form method="post"
+                      action="{{ url_for('admin.revoke_license', license_id=lic.id) }}"
+                      style="display:inline;">
+                    <button class="action-link danger"
+                            onclick="return confirm('Revoke this license? Linked devices will be deactivated.')">
+                        Revoke
+                    </button>
+                </form>
+                {% elif lic.status == 'revoked' %}
+                <form method="post"
+                      action="{{ url_for('admin.grant_license', license_id=lic.id) }}"
+                      style="display:inline;">
+                    <button class="action-link success"
+                            onclick="return confirm('Grant this license again?')">
+                        Grant Again
+                    </button>
+                </form>
+                {% else %}
+                    <span class="text-muted">{{ lic.status }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

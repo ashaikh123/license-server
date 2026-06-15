@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ organization.name }} Dashboard - License Server{% endblock %}
+
+{% block content %}
+<h2>{{ organization.name }} Dashboard</h2>
+<div class="row mt-4">
+  <div class="col-md-4">
+    <div class="card text-bg-primary mb-3">
+      <div class="card-body text-center">
+        <h5 class="card-title">Users</h5>
+        <p class="card-text display-6">{{ user_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-success mb-3">
+      <div class="card-body text-center">
+        <h5 class="card-title">Licenses</h5>
+        <p class="card-text display-6">{{ license_count }}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-bg-info mb-3">
+      <div class="card-body text-center">
+        <h5 class="card-title">Devices</h5>
+        <p class="card-text display-6">{{ device_count }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

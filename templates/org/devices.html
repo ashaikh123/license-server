@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Devices{% endblock %}
+
+{% block content %}
+<h2>Devices</h2>
+<table class="table table-striped mt-3">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>User</th>
+      <th>License Key</th>
+      <th>System ID</th>
+      <th>Machine Name</th>
+      <th>Activated</th>
+      <th>Last Check</th>
+      <th>IP</th>
+      <th>Version</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for device in devices %}
+    <tr>
+      <td>{{ device.id }}</td>
+      <td>{{ device.user.email }}</td>
+      <td>{{ device.license.key }}</td>
+      <td>{{ device.system_id }}</td>
+      <td>{{ device.machine_name or '-' }}</td>
+      <td>{{ device.activation_timestamp.strftime('%Y-%m-%d') }}</td>
+      <td>{{ device.last_check.strftime('%Y-%m-%d') if device.last_check else '-' }}</td>
+      <td>{{ device.ip_address or '-' }}</td>
+      <td>{{ device.app_version or '-' }}</td>
+      <td>
+        {% if device.is_active %}
+        <span class="badge bg-success">Active</span>
+        {% else %}
+        <span class="badge bg-secondary">Inactive</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
