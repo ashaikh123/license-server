@@ -14,6 +14,8 @@ development server you can also set ``FLASK_APP=app.py``.
 import os
 from datetime import datetime
 
+from sqlalchemy import inspect
+
 from flask import Flask
 from flask_migrate import Migrate
 
@@ -48,22 +50,22 @@ def create_app() -> Flask:
     app.register_blueprint(api_bp)
 
     with app.app_context():
-        #db.create_all()
+        inspector = inspect(db.engine)
 
+        if "admins" in inspector.get_table_names():
+            admin_email = app.config.get("ADMIN_EMAIL")
+            admin_password = app.config.get("ADMIN_PASSWORD")
 
-        admin_email = app.config.get("ADMIN_EMAIL")
-        admin_password = app.config.get("ADMIN_PASSWORD")
+            if admin_email and admin_password:
+                existing = Admin.query.filter_by(email=admin_email).first()
 
-        if admin_email and admin_password:
-            existing = Admin.query.filter_by(email=admin_email).first()
-
-            if not existing:
-                admin = Admin(
-                    email=admin_email,
-                    password_hash=generate_password_hash(admin_password)
-                )
-                db.session.add(admin)
-                db.session.commit()
+                if not existing:
+                    admin = Admin(
+                        email=admin_email,
+                        password_hash=generate_password_hash(admin_password)
+                    )
+                    db.session.add(admin)
+                    db.session.commit()
 
     return app
 
