@@ -237,6 +237,10 @@ def deactivate_user(user_id):
 def activate_user(user_id):
     user = User.query.get_or_404(user_id)
 
+    if not user.organization or not user.organization.is_active:
+        flash("Cannot activate user. Organization is inactive.", "danger")
+        return redirect(url_for("admin.users"))
+
     user.is_active = True
     db.session.commit()
 
@@ -302,6 +306,14 @@ def revoke_license(license_id):
 @admin_login_required
 def grant_license(license_id):
     lic = License.query.get_or_404(license_id)
+
+    if not lic.user or not lic.user.is_active:
+        flash("Cannot grant license. User is inactive.", "danger")
+        return redirect(url_for("admin.licenses"))
+
+    if not lic.user.organization or not lic.user.organization.is_active:
+        flash("Cannot grant license. Organization is inactive.", "danger")
+        return redirect(url_for("admin.licenses"))
 
     lic.status = "active"
     db.session.commit()
