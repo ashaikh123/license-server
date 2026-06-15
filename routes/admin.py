@@ -142,9 +142,18 @@ def deactivate_organization(org_id):
     org.is_active = False
     org.dashboard_enabled = False
 
+    for user in org.users:
+        user.is_active = False
+
+        for lic in user.licenses:
+            lic.status = "revoked"
+
+            for device in lic.devices:
+                device.is_active = False
+
     db.session.commit()
 
-    flash("Organization deactivated successfully", "success")
+    flash("Organization deactivated. All users, licenses and devices were disabled.", "success")
     return redirect(url_for("admin.organizations"))
 
 @admin_bp.route("/organizations/regenerate-token/<int:org_id>", methods=["POST"])
@@ -212,14 +221,15 @@ def deactivate_user(user_id):
 
     user.is_active = False
 
-    # Revoke all active licenses for this user
     for lic in user.licenses:
-        if lic.status == "active":
-            lic.status = "revoked"
+        lic.status = "revoked"
+
+        for device in lic.devices:
+            device.is_active = False
 
     db.session.commit()
 
-    flash("User deactivated and active licenses revoked", "success")
+    flash("User deactivated. All licenses and devices were disabled.", "success")
     return redirect(url_for("admin.users"))
 
 @admin_bp.route("/users/activate/<int:user_id>", methods=["POST"])
