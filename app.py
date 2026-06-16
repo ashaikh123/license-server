@@ -44,6 +44,10 @@ def create_app() -> Flask:
     db.init_app(app)
     migrate = Migrate(app, db)
 
+    @app.route("/health")
+    def health():
+        return {"status": "ok"}, 200
+
     # Register blueprints
     app.register_blueprint(admin_bp)
     app.register_blueprint(org_bp)
