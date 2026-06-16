@@ -349,3 +349,10 @@ def deactivate_device():
         "success": True,
         "message": "Device deactivated successfully"
     })
+
+    @api_bp.route("/health", methods=["GET"])
+def health():
+    return {
+        "success": True,
+        "status": "healthy"
+    }, 200
