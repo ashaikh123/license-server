@@ -17,7 +17,7 @@
       <th>Last Check</th>
       <th>IP</th>
       <th>Version</th>
-      <th>Status</th>
+      <th>Action</th>
     </tr>
   </thead>
   <tbody>
@@ -34,11 +34,22 @@
       <td>{{ device.ip_address or '-' }}</td>
       <td>{{ device.app_version or '-' }}</td>
       <td>
-        {% if device.is_active %}
-        <span class="badge bg-success">Active</span>
-        {% else %}
-        <span class="badge bg-secondary">Inactive</span>
-        {% endif %}
+
+      {% if device.is_active %}
+      <form method="POST"
+            action="{{ url_for('admin.disable_device', device_id=device.id) }}"
+            style="display:inline;">
+          <input type="submit" value="Disable" class="link-button">
+      </form>
+      {% else %}
+      <form method="POST"
+            action="{{ url_for('admin.enable_device', device_id=device.id) }}"
+            style="display:inline;">
+          <input type="submit" value="Enable" class="link-button">
+      </form>
+      {% endif %}
+
+
       </td>
     </tr>
     {% endfor %}

@@ -388,6 +388,41 @@ def devices():
     return render_template("admin/devices.html", devices=all_devices)
 
 
+@admin_bp.route("/devices/disable/<int:device_id>", methods=["POST"])
+@admin_login_required
+def disable_device(device_id):
+    device = Device.query.get_or_404(device_id)
+
+    device.is_active = False
+    db.session.commit()
+
+    flash("Device disabled successfully", "success")
+    return redirect(url_for("admin.devices"))
+
+
+@admin_bp.route("/devices/enable/<int:device_id>", methods=["POST"])
+@admin_login_required
+def enable_device(device_id):
+    device = Device.query.get_or_404(device_id)
+
+    if not device.license or device.license.status != "active":
+        flash("Cannot enable device. License is not active.", "danger")
+        return redirect(url_for("admin.devices"))
+
+    if not device.license.user or not device.license.user.is_active:
+        flash("Cannot enable device. User is inactive.", "danger")
+        return redirect(url_for("admin.devices"))
+
+    if not device.license.user.organization or not device.license.user.organization.is_active:
+        flash("Cannot enable device. Organization is inactive.", "danger")
+        return redirect(url_for("admin.devices"))
+
+    device.is_active = True
+    db.session.commit()
+
+    flash("Device enabled successfully", "success")
+    return redirect(url_for("admin.devices"))
+
 @admin_bp.route("/logs")
 @admin_login_required
 def logs():
