@@ -62,3 +62,5 @@ class Config:
     # Optional secret key for authenticating API calls. Clients can
     # include this value in their requests to prove authenticity.
     API_SECRET_KEY = os.environ.get("API_SECRET_KEY", "api-secret-key")
+
+    OFFLINE_GRACE_MINUTES = int(os.environ.get("OFFLINE_GRACE_MINUTES", 10))

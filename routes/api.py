@@ -207,6 +207,7 @@ def activate_license():
         "expiry_date": license_obj.expiry_date.isoformat() if license_obj.expiry_date else None,
         "devices_used": active_device_count + 1,
         "max_devices": license_obj.max_devices,
+        "offline_grace_minutes": current_app.config.get("OFFLINE_GRACE_MINUTES", 10),
     })
 
 
@@ -282,6 +283,7 @@ def validate_license():
         "message": "License valid",
         "license_status": license_obj.status,
         "expiry_date": license_obj.expiry_date.isoformat() if license_obj.expiry_date else None,
+        "offline_grace_minutes": current_app.config.get("OFFLINE_GRACE_MINUTES", 10),
     })
 
 
