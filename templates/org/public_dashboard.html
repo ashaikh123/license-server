@@ -3,6 +3,48 @@
 {% block title %}{{ org.name }} Dashboard{% endblock %}
 
 {% block content %}
+<style>
+  .public-table {
+    font-size: 13px;
+    table-layout: fixed;
+    min-width: 1150px;
+  }
+
+  .public-table th,
+  .public-table td {
+    vertical-align: middle;
+    word-break: break-word;
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .truncate-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .col-user { width: 160px; }
+  .col-email { width: 230px; }
+  .col-license { width: 190px; }
+  .col-date { width: 115px; }
+  .col-small { width: 90px; text-align: center; }
+  .col-machine { width: 210px; }
+  .col-status { width: 100px; text-align: center; }
+
+  .copy-btn {
+    border: none;
+    background: #e9ecef;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+</style>
+
 <h2>{{ org.name }} Dashboard</h2>
 
 <div class="stats-grid">
@@ -22,23 +64,156 @@
 
 <hr>
 
-<h3>Users</h3>
-<table class="table table-striped">
+<h3>Users & Licenses</h3>
+
+<div class="table-responsive mt-3">
+  <table class="table table-striped table-hover table-sm public-table">
     <thead>
-        <tr>
-            <th>User</th>
-            <th>Email</th>
-            <th>Status</th>
-        </tr>
+      <tr>
+        <th class="col-user">User</th>
+        <th class="col-email">Email</th>
+        <th class="col-license">License Key</th>
+        <th class="col-date">Start Date</th>
+        <th class="col-date">Expiry Date</th>
+        <th class="col-small">Max</th>
+        <th class="col-small">Used</th>
+        <th class="col-status">License</th>
+        <th class="col-status">User</th>
+      </tr>
     </thead>
+
     <tbody>
-        {% for user in users %}
-        <tr>
-            <td>{{ user.name }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ "Active" if user.is_active else "Inactive" }}</td>
-        </tr>
-        {% endfor %}
+      {% for license in licenses %}
+      {% set user = license.user %}
+      {% set used_devices = device_count_map.get(license.id, 0) %}
+
+      <tr>
+        <td class="col-user truncate-cell" title="{{ user.name if user else '-' }}">
+          {{ user.name if user else '-' }}
+        </td>
+
+        <td class="col-email truncate-cell" title="{{ user.email if user else '-' }}">
+          {{ user.email if user else '-' }}
+        </td>
+
+        <td class="col-license truncate-cell" title="{{ license.key }}">
+          {{ license.key }}
+          <button type="button"
+                  class="copy-btn"
+                  onclick="navigator.clipboard.writeText('{{ license.key }}')">
+            Copy
+          </button>
+        </td>
+
+        <td class="col-date text-nowrap">
+          {{ license.activation_date.strftime('%Y-%m-%d') if license.activation_date else '-' }}
+        </td>
+
+        <td class="col-date text-nowrap">
+          {{ license.expiry_date.strftime('%Y-%m-%d') if license.expiry_date else '-' }}
+        </td>
+
+        <td class="col-small">
+          {{ license.max_devices }}
+        </td>
+
+        <td class="col-small">
+          {{ used_devices }}
+        </td>
+
+        <td class="col-status">
+          {% if license.status == 'active' %}
+            <span class="badge bg-success">Active</span>
+          {% elif license.status == 'expired' %}
+            <span class="badge bg-warning text-dark">Expired</span>
+          {% elif license.status == 'revoked' %}
+            <span class="badge bg-danger">Revoked</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ license.status }}</span>
+          {% endif %}
+        </td>
+
+        <td class="col-status">
+          {% if user and user.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
     </tbody>
-</table>
+  </table>
+</div>
+
+<hr>
+
+<h3>Linked Devices</h3>
+
+<div class="table-responsive mt-3">
+  <table class="table table-striped table-hover table-sm public-table">
+    <thead>
+      <tr>
+        <th class="col-user">User</th>
+        <th class="col-email">Email</th>
+        <th class="col-license">License Key</th>
+        <th class="col-machine">Machine Name</th>
+        <th class="col-date">Activated</th>
+        <th class="col-date">Last Check</th>
+        <th class="col-small">Version</th>
+        <th class="col-status">Device</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for device in devices %}
+      {% set user = device.user %}
+      {% set license = device.license %}
+
+      <tr>
+        <td class="col-user truncate-cell" title="{{ user.name if user else '-' }}">
+          {{ user.name if user else '-' }}
+        </td>
+
+        <td class="col-email truncate-cell" title="{{ user.email if user else '-' }}">
+          {{ user.email if user else '-' }}
+        </td>
+
+        <td class="col-license truncate-cell" title="{{ license.key if license else '-' }}">
+          {% if license %}
+            {{ license.key[:8] }}...{{ license.key[-5:] }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+
+        <td class="col-machine truncate-cell" title="{{ device.machine_name or '-' }}">
+          {{ device.machine_name or '-' }}
+        </td>
+
+        <td class="col-date text-nowrap">
+          {{ device.activation_timestamp.strftime('%Y-%m-%d') if device.activation_timestamp else '-' }}
+        </td>
+
+        <td class="col-date text-nowrap">
+          {{ device.last_check.strftime('%Y-%m-%d') if device.last_check else '-' }}
+        </td>
+
+        <td class="col-small">
+          {{ device.app_version or '-' }}
+        </td>
+
+        <td class="col-status">
+          {% if device.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 {% endblock %}

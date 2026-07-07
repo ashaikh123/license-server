@@ -185,3 +185,12 @@ h2 {
 .inline-table-form th {
     background: #eeeeee;
 }
+
+.link-button {
+    background: none;
+    border: none;
+    color: #0d6efd;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+}
