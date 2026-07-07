@@ -18,13 +18,18 @@ class UsageLog(db.Model):
     license_id = db.Column(db.Integer, db.ForeignKey("licenses.id"), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     organization_id = db.Column(db.Integer, db.ForeignKey("organizations.id"), nullable=True)
+
     system_id = db.Column(db.String(255), nullable=True)
     ip_address = db.Column(db.String(100), nullable=True)
     app_version = db.Column(db.String(50), nullable=True)
-    action = db.Column(db.String(20), nullable=False)  # activate or validate
-    result = db.Column(db.String(10), nullable=False)  # success or fail
+    action = db.Column(db.String(20), nullable=False)
+    result = db.Column(db.String(10), nullable=False)
     reason = db.Column(db.String(255), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    license = db.relationship("License")
+    user = db.relationship("User")
+    organization = db.relationship("Organization")
 
     def __repr__(self) -> str:
         return f"<UsageLog {self.action} {self.result} for licence {self.license_id}>"
