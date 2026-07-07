@@ -67,6 +67,17 @@ def view_org_dashboard(token):
     devices = Device.query.filter_by(organization_id=org.id).all()
     licenses = License.query.join(User).filter(User.organization_id == org.id).all()
 
+    device_count_map = {}
+    for license_obj in licenses:
+        device_count_map[license_obj.id] = Device.query.filter_by(
+            license_id=license_obj.id,
+            is_active=True
+        ).count()
+
+    device_map = {}
+    for device in devices:
+        device_map.setdefault(device.license_id, []).append(device)
+
     return render_template(
         "org/public_dashboard.html",
         org=org,
@@ -76,6 +87,8 @@ def view_org_dashboard(token):
         user_count=len(users),
         device_count=len(devices),
         license_count=len(licenses),
+        device_count_map=device_count_map,
+        device_map=device_map,
     )
 
 @org_bp.route("/dashboard")
