@@ -84,8 +84,16 @@
           {{ log.user.email if log.user else '-' }}
         </td>
 
-        <td class="col-org truncate-cell" title="{{ log.organization.name if log.organization else '-' }}">
-          {{ log.organization.name if log.organization else '-' }}
+        <td class="col-org truncate-cell"
+            title="{{ log.organization.name if log.organization is defined and log.organization else (log.user.organization.name if log.user and log.user.organization else '-') }}">
+
+          {% if log.organization is defined and log.organization %}
+            {{ log.organization.name }}
+          {% elif log.user and log.user.organization %}
+            {{ log.user.organization.name }}
+          {% else %}
+            -
+          {% endif %}
         </td>
 
         <td class="col-system truncate-cell" title="{{ system_id }}">

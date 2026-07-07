@@ -27,9 +27,6 @@ class UsageLog(db.Model):
     reason = db.Column(db.String(255), nullable=True)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    license = db.relationship("License")
-    user = db.relationship("User")
-    organization = db.relationship("Organization")
 
     def __repr__(self) -> str:
         return f"<UsageLog {self.action} {self.result} for licence {self.license_id}>"
