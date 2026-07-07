@@ -427,5 +427,14 @@ def enable_device(device_id):
 @admin_login_required
 def logs():
     """Display usage logs."""
-    logs = UsageLog.query.order_by(UsageLog.timestamp.desc()).limit(100).all()
+
+    page = request.args.get("page", 1, type=int)
+    per_page = 50
+
+    logs = (
+        UsageLog.query
+        .order_by(UsageLog.timestamp.desc())
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+
     return render_template("admin/logs.html", logs=logs)
