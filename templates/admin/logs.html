@@ -7,7 +7,7 @@
   .logs-table {
     font-size: 13px;
     table-layout: fixed;
-    min-width: 1250px;
+    min-width: 1220px;
   }
 
   .logs-table th,
@@ -16,13 +16,13 @@
     word-break: break-word;
   }
 
-  .col-timestamp { width: 135px; }
-  .col-action { width: 85px; }
+  .col-timestamp { width: 110px; }
+  .col-action { width: 70px; }
   .col-license { width: 145px; }
-  .col-user { width: 210px; }
-  .col-org { width: 150px; }
-  .col-system { width: 160px; }
-  .col-ip { width: 155px; }
+  .col-user { width: 150px; }
+  .col-org { width: 120px; }
+  .col-system { width: 100px; }
+  .col-ip { width: 120px; }
   .col-version { width: 70px; text-align: center; }
   .col-result { width: 90px; text-align: center; }
   .col-reason { width: 180px; }
@@ -73,7 +73,7 @@
         </td>
 
         <td class="col-license truncate-cell" title="{{ license_key }}">
-          {% if license_key != '-' and license_key|length > 14 %}
+          {% if license_key != '-' and license_key|length > 16 %}
             {{ license_key[:8] }}...{{ license_key[-5:] }}
           {% else %}
             {{ license_key }}
